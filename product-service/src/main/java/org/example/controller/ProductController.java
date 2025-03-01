@@ -66,7 +66,7 @@ public class ProductController {
 
     @PostMapping
     public ResponseEntity<?> createProduct(@RequestBody Product product) {
-
+        logger.info("POST /products called with data: {}", product);
         if (product.title() == null || product.title().isEmpty() ||
             product.price() <= 0 || product.count() < 0) {
 

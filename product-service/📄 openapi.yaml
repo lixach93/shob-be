@@ -4,7 +4,7 @@ info:
   description: API for managing product information in DynamoDB
   version: 1.1.0
 servers:
-  - url: https://nzhnl9rpg2.execute-api.eu-central-1.amazonaws.com/prod
+  - url: https://iwsfgsozfe.execute-api.eu-central-1.amazonaws.com/prod
     description: Production Server
 
 paths:
