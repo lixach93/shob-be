@@ -1,17 +1,17 @@
 openapi: 3.0.0
 info:
   title: Product Service API
-  description: API for retrieving product information
-  version: 1.0.0
+  description: API for managing product information in DynamoDB
+  version: 1.1.0
 servers:
-  - url: https://r8stq81y0a.execute-api.eu-central-1.amazonaws.com/prod
+  - url: https://nzhnl9rpg2.execute-api.eu-central-1.amazonaws.com/prod
     description: Production Server
 
 paths:
   /products:
     get:
       summary: Get all products
-      description: Retrieves the full list of products.
+      description: Retrieves the full list of products with stock count.
       operationId: getProducts
       responses:
         "200":
@@ -29,18 +29,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+    post:
+      summary: Create a new product
+      description: Adds a new product to the database. If stock creation fails, the product is not created.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product successfully created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid request (missing fields, incorrect types)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /products/{productId}:
     get:
       summary: Get a product by ID
-      description: Retrieves a single product by its ID.
+      description: Retrieves a single product by its ID, including stock count.
       operationId: getProductById
       parameters:
         - name: productId
           in: path
           required: true
-          description: ID of the product to retrieve
+          description: UUID of the product to retrieve
           schema:
-            type: integer
+            type: string
+            format: uuid
       responses:
         "200":
           description: Product found
@@ -67,14 +98,42 @@ components:
       type: object
       properties:
         id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "19ba3d6a-f8ed-491b-a192-0a33b71b38c4"
         title:
           type: string
-          example: "Product 1"
-        price:
+          example: "Laptop"
+        description:
           type: string
-          example: "100.0"
+          example: "High performance laptop"
+        price:
+          type: integer
+          example: 1200
+        count:
+          type: integer
+          example: 5
+
+    CreateProductRequest:
+      type: object
+      required:
+        - title
+        - description
+        - price
+        - count
+      properties:
+        title:
+          type: string
+          example: "Laptop"
+        description:
+          type: string
+          example: "High performance laptop"
+        price:
+          type: integer
+          example: 1200
+        count:
+          type: integer
+          example: 5
 
     Error:
       type: object

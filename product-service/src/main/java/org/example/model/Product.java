@@ -1,6 +1,5 @@
 package org.example.model;
 
 
-public record Product(int id, String price, String title) {
-
+public record Product(String id, String title, String description, int price, int count) {
 }
