@@ -86,7 +86,6 @@ public class ProductService {
     public Product createProduct(String title, String description, int price, int count) {
         String productId = UUID.randomUUID().toString(); // Генерируем UUID
 
-        // Создаём запись для таблицы products
         Map<String, AttributeValue> productItem = Map.of(
                 "id", AttributeValue.builder().s(productId).build(),
                 "title", AttributeValue.builder().s(title).build(),
@@ -94,13 +93,11 @@ public class ProductService {
                 "price", AttributeValue.builder().n(String.valueOf(price)).build()
         );
 
-        // Создаём запись для таблицы stocks
         Map<String, AttributeValue> stockItem = Map.of(
                 "product_id", AttributeValue.builder().s(productId).build(),
                 "count", AttributeValue.builder().n(String.valueOf(count)).build()
         );
 
-        // Используем транзакцию
         TransactWriteItemsRequest transactWriteItemsRequest = TransactWriteItemsRequest.builder()
                 .transactItems(List.of(
                         TransactWriteItem.builder().put(
