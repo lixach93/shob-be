@@ -15,7 +15,6 @@ import software.constructs.Construct;
 import java.util.List;
 import java.util.Map;
 
-
 public class InfrastructureStack extends Stack {
 
     public InfrastructureStack(final Construct scope, final String id) {
@@ -28,9 +27,13 @@ public class InfrastructureStack extends Stack {
         Role lambdaRole = Role.Builder.create(this, "LambdaExecutionRole")
                 .assumedBy(new ServicePrincipal("lambda.amazonaws.com"))
                 .managedPolicies(List.of(
-                        ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
+                        ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
+                        ManagedPolicy.fromAwsManagedPolicyName("AmazonDynamoDBFullAccess") // ✅ Полный доступ к DynamoDB
                 ))
                 .build();
+
+        String productsTableName = "products"; // Имя существующей таблицы
+        String stocksTableName = "stocks"; // Имя существующей таблицы
 
         Function getProductsList = Function.Builder.create(this, "GetProductsListLambda")
                 .runtime(Runtime.JAVA_17)
@@ -41,8 +44,10 @@ public class InfrastructureStack extends Stack {
                 .functionName("getProductsList")
                 .role(lambdaRole)
                 .environment(Map.of(
+                        "PRODUCTS_TABLE_NAME", productsTableName,
+                        "STOCKS_TABLE_NAME", stocksTableName,
                         "ACCESS_CONTROL_ALLOW_ORIGIN", "*",
-                        "ACCESS_CONTROL_ALLOW_METHODS", "GET, OPTIONS",
+                        "ACCESS_CONTROL_ALLOW_METHODS", "GET, POST, OPTIONS",
                         "ACCESS_CONTROL_ALLOW_HEADERS", "Content-Type, Authorization"
                 ))
                 .build();
@@ -56,8 +61,27 @@ public class InfrastructureStack extends Stack {
                 .functionName("getProductById")
                 .role(lambdaRole)
                 .environment(Map.of(
+                        "PRODUCTS_TABLE_NAME", productsTableName,
+                        "STOCKS_TABLE_NAME", stocksTableName,
                         "ACCESS_CONTROL_ALLOW_ORIGIN", "*",
-                        "ACCESS_CONTROL_ALLOW_METHODS", "GET, OPTIONS",
+                        "ACCESS_CONTROL_ALLOW_METHODS", "GET, POST, OPTIONS",
+                        "ACCESS_CONTROL_ALLOW_HEADERS", "Content-Type, Authorization"
+                ))
+                .build();
+
+        Function createProduct = Function.Builder.create(this, "CreateProductLambda")
+                .runtime(Runtime.JAVA_17)
+                .handler("org.example.StreamLambdaHandler::handleRequest")
+                .code(Code.fromAsset("../product-service/target/product-service-1.0-SNAPSHOT-lambda-package.zip"))
+                .memorySize(512)
+                .timeout(Duration.seconds(10))
+                .functionName("createProduct")
+                .role(lambdaRole)
+                .environment(Map.of(
+                        "PRODUCTS_TABLE_NAME", productsTableName,
+                        "STOCKS_TABLE_NAME", stocksTableName,
+                        "ACCESS_CONTROL_ALLOW_ORIGIN", "*",
+                        "ACCESS_CONTROL_ALLOW_METHODS", "GET, POST, OPTIONS",
                         "ACCESS_CONTROL_ALLOW_HEADERS", "Content-Type, Authorization"
                 ))
                 .build();
@@ -67,8 +91,8 @@ public class InfrastructureStack extends Stack {
                 .build();
 
         api.getRoot().addCorsPreflight(CorsOptions.builder()
-                .allowOrigins(List.of("*"))  // Разрешить все домены
-                .allowMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")) // Разрешённые методы
+                .allowOrigins(List.of("*"))
+                .allowMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"))
                 .allowHeaders(List.of("Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token", "X-Amz-User-Agent"))
                 .allowCredentials(true)
                 .build());
@@ -77,7 +101,7 @@ public class InfrastructureStack extends Stack {
 
         products.addCorsPreflight(CorsOptions.builder()
                 .allowOrigins(List.of("*"))
-                .allowMethods(List.of("GET", "OPTIONS"))
+                .allowMethods(List.of("GET", "POST", "OPTIONS")) // ✅ Разрешаем POST
                 .allowHeaders(List.of("Content-Type", "Authorization"))
                 .build());
 
@@ -92,5 +116,7 @@ public class InfrastructureStack extends Stack {
                 .build());
 
         productById.addMethod("GET", LambdaIntegration.Builder.create(getProductById).build());
+
+        products.addMethod("POST", LambdaIntegration.Builder.create(createProduct).build());
     }
 }

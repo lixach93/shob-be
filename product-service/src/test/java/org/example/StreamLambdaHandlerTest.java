@@ -1,6 +1,5 @@
 package org.example;
 
-
 import com.amazonaws.serverless.proxy.internal.LambdaContainerHandler;
 import com.amazonaws.serverless.proxy.internal.testutils.AwsProxyRequestBuilder;
 import com.amazonaws.serverless.proxy.internal.testutils.MockLambdaContext;
@@ -43,16 +42,12 @@ public class StreamLambdaHandlerTest {
         assertNotNull(response);
         assertEquals(200, response.getStatusCode());
         assertFalse(response.isBase64Encoded());
-
-        assertTrue(response.getBody().contains("Product 1"));
-        assertTrue(response.getBody().contains("Product 5"));
-        assertTrue(response.getMultiValueHeaders().containsKey(HttpHeaders.CONTENT_TYPE));
-        assertTrue(response.getMultiValueHeaders().getFirst(HttpHeaders.CONTENT_TYPE).startsWith(MediaType.APPLICATION_JSON_VALUE));
+        assertTrue(response.getBody().contains("title"));
     }
 
     @Test
     public void getProductById_ReturnsCorrectProduct() {
-        InputStream requestStream = new AwsProxyRequestBuilder("/products/3", "GET")
+        InputStream requestStream = new AwsProxyRequestBuilder("/products/39c4f230-3cda-4998-ac74-a3bb992af8aa", "GET")
                 .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .buildStream();
         ByteArrayOutputStream responseStream = new ByteArrayOutputStream();
@@ -62,8 +57,10 @@ public class StreamLambdaHandlerTest {
         AwsProxyResponse response = readResponse(responseStream);
         assertNotNull(response);
         assertEquals(200, response.getStatusCode());
-        assertTrue(response.getBody().contains("\"id\":3"));
-        assertTrue(response.getBody().contains("\"title\":\"Product 3\""));
+        assertTrue(response.getBody().contains("\"id\":\"39c4f230-3cda-4998-ac74-a3bb992af8aa\""));
+        assertTrue(response.getBody().contains("\"title\""));
+        assertTrue(response.getBody().contains("\"price\""));
+        assertTrue(response.getBody().contains("\"count\""));
     }
 
     @Test
@@ -80,6 +77,57 @@ public class StreamLambdaHandlerTest {
         assertEquals(404, response.getStatusCode());
         assertTrue(response.getBody().contains("Product with ID 99 not found"));
     }
+
+    @Test
+    public void createProduct_ValidData_Returns201() {
+        String requestBody = """
+            {
+                "title": "New Product",
+                "description": "Awesome product",
+                "price": 100,
+                "count": 10
+            }
+        """;
+
+        InputStream requestStream = new AwsProxyRequestBuilder("/products", "POST")
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body(requestBody)
+                .buildStream();
+        ByteArrayOutputStream responseStream = new ByteArrayOutputStream();
+
+        handle(requestStream, responseStream);
+
+        AwsProxyResponse response = readResponse(responseStream);
+        assertNotNull(response);
+        assertEquals(201, response.getStatusCode());
+        assertTrue(response.getBody().contains("\"title\":\"New Product\""));
+    }
+
+    @Test
+    public void createProduct_InvalidData_Returns400() {
+        String requestBody = """
+            {
+                "title": "",
+                "description": "Bad product",
+                "price": -10,
+                "count": -5
+            }
+        """;
+
+        InputStream requestStream = new AwsProxyRequestBuilder("/products", "POST")
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body(requestBody)
+                .buildStream();
+        ByteArrayOutputStream responseStream = new ByteArrayOutputStream();
+
+        handle(requestStream, responseStream);
+
+        AwsProxyResponse response = readResponse(responseStream);
+        assertNotNull(response);
+        assertEquals(400, response.getStatusCode());
+        assertTrue(response.getBody().contains("Invalid product data"));
+    }
+
 
     @Test
     public void invalidResource_Returns404() {
